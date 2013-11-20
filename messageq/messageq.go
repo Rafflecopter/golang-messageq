@@ -47,6 +47,7 @@ type Config struct {
 // -- Functions and Methods --
 
 func New(pool *redis.Pool, disco Discovery, cfg *Config) *MessageQueue {
+	cfg.Defaults()
 	mq := &MessageQueue{
     Errors: make(chan error),
 		pool:        pool,
@@ -146,4 +147,12 @@ func (rqc *RelyQConfig) Defaults() {
 	*cfg = relyq.Config(*rqc)
 	cfg.Defaults()
 	*rqc = RelyQConfig(*cfg)
+}
+
+func (cfg *Config) Defaults() {
+	cfg.RelyQConfig.Defaults()
+
+	if cfg.SubscriberListDecay == 0 {
+		cfg.SubscriberListDecay = 5 * time.Minute
+	}
 }

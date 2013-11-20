@@ -33,7 +33,7 @@ func CreateMessageQ(pool *redis.Pool) *messageq.MessageQueue {
       KeepDoneTasks: false, // Whether to keep the backend storage of "done" tasks (default false)
     },
     // The cache decay time for listing a channels subscribers
-    SubscriberListDelay: 5 * time.Minute,
+    SubscriberListDecay: 5 * time.Minute,
   }
 
   // This must be the same on all nodes of a pub/sub network!
@@ -58,7 +58,7 @@ if messageChannel, err := q.Subscribe("some-channel"); err != nil {
   }()
 }
 
-if err := q.Publish("another-channel", Message{"A":"Message"}); err != nil {
+if err := q.Publish("another-channel", messageq.Message{"A":"Message"}); err != nil {
   panic(err)
 }
 
