@@ -35,10 +35,10 @@ type Discovery interface {
 }
 
 type Message map[string]interface{}
-type RelyQueueConfig relyq.Config
+type RelyQConfig relyq.Config
 
 type Config struct {
-	*RelyQueueConfig
+	*RelyQConfig
 
 	// Subscribers cache decay duration
 	SubscriberListDecay time.Duration
@@ -139,4 +139,11 @@ func (mq *MessageQueue) send(endpoint string, message Message) error {
 	q := mq.getQueue(endpoint)
 	t := relyq.Task(message)
 	return q.q.Push(t)
+}
+
+func (rqc *RelyQConfig) Defaults() {
+	cfg := new(relyq.Config)
+	*cfg = relyq.Config(*rqc)
+	cfg.Defaults()
+	*rqc = RelyQConfig(*cfg)
 }

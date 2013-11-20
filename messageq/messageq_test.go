@@ -2,7 +2,6 @@ package messageq
 
 import (
 	"github.com/garyburd/redigo/redis"
-  "github.com/Rafflecopter/golang-relyq/relyq"
   "github.com/yanatan16/gowaiter"
 	"testing"
   "time"
@@ -191,7 +190,7 @@ func TestThreeWay(t *testing.T) {
 
 func config() *Config {
 	return &Config{
-		Config: &relyq.Config{
+		RelyQConfig: &RelyQConfig{
       Prefix: "go-messageq-test:" + rstr(8),
     },
 	}

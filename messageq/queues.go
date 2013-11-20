@@ -11,7 +11,7 @@ type queue struct {
 
 func (mq *MessageQueue) newQueue(endpoint string) *queue {
 	cfg := new(relyq.Config)
-  *cfg = *mq.cfg.Config // Copy!
+  *cfg = relyq.Config(*mq.cfg.RelyQConfig) // Copy!
 	cfg.Prefix = endpoint
 	q := relyq.NewRedisJson(mq.pool, cfg)
 
