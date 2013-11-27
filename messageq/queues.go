@@ -24,9 +24,9 @@ func (q *queue) Close() error {
   return q.q.Close()
 }
 
-func (q *queue) Messages(errs chan error) chan Message {
+func (q *queue) Messages(errs chan error, example Message) chan Message {
   if q.c == nil {
-    l := q.q.Listen()
+    l := q.q.Listen(example)
     // No failing in messageq
     go forwardErrors(l.Errors, errs)
     q.c = wrapChan(l)
@@ -37,9 +37,9 @@ func (q *queue) Messages(errs chan error) chan Message {
 func wrapChan(l *relyq.Listener) chan Message {
 	mc := make(chan Message)
 	go func() {
-		for t := range l.Tasks {
-			mc <- Message(t)
-      l.Finish <- t
+		for msg := range l.Tasks {
+			mc <- msg
+      l.Finish <- msg
 		}
     close(l.Finish)
     close(l.Fail)

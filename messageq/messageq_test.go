@@ -2,6 +2,7 @@ package messageq
 
 import (
 	"github.com/garyburd/redigo/redis"
+  "github.com/extemporalgenome/uuid"
   "github.com/yanatan16/gowaiter"
 	"testing"
   "time"
@@ -26,18 +27,18 @@ func TestBasic(t *testing.T) {
 	defer end(t, q, r)
 	done := make(chan bool)
 
-	c, err := q.Subscribe("mychan")
+	c, err := q.Subscribe("mychan", ArbMessage{})
 	if err != nil {
 		t.Error(err)
 	}
 
 	go func() {
 		msg := <-c
-		checkMessageEqual(t, msg, Message{"hello": "world"})
+		checkMessageEqual(t, msg, ArbMessage{"hello": "world"})
 		done <- true
 	}()
 
-	r.Publish("mychan", Message{"hello": "world"})
+	r.Publish("mychan", ArbMessage{"hello": "world"})
 
 	select {
 	case <-done:
@@ -53,12 +54,12 @@ func TestBasic(t *testing.T) {
 func TestClose(t *testing.T) {
   q, r := begin(t, config)
 
-  c, err := q.Subscribe("achan")
+  c, err := q.Subscribe("achan", ArbMessage{})
   if err != nil {
     t.Error(err)
   }
 
-  if err := r.Publish("achan", Message{"before":"close"}); err != nil {
+  if err := r.Publish("achan", ArbMessage{"before":"close"}); err != nil {
     t.Error(err)
   }
 
@@ -70,7 +71,7 @@ func TestClose(t *testing.T) {
     if !ok {
       t.Error("Got close before message on c")
     }
-    checkMessageEqual(t, msg, Message{"before":"close"})
+    checkMessageEqual(t, msg, ArbMessage{"before":"close"})
   case <- time.After(50 * time.Millisecond):
     t.Error("Timeout waiting for c message")
   }
@@ -115,24 +116,24 @@ func TestTwoWay(t *testing.T) {
     w.Done <- true
   }
 
-  if c, err := q.Subscribe("chan1"); err != nil {
+  if c, err := q.Subscribe("chan1", &StructMessage{}); err != nil {
     t.Error(err)
   } else {
-    go listen(c, Message{"from":"q2"})
+    go listen(c, &StructMessage{X:"q2"})
   }
 
-  if c, err := r.Subscribe("chan2"); err != nil {
+  if c, err := r.Subscribe("chan2", &StructMessage{}); err != nil {
     t.Error(err)
   } else {
-    go listen(c, Message{"from":"q1"})
+    go listen(c, &StructMessage{X:"q1"})
   }
 
-  q.Publish("chan2", Message{"from":"q1"})
-  r.Publish("chan1", Message{"from":"q2"})
-  r.Publish("chan1", Message{"from":"q2"})
-  q.Publish("chan2", Message{"from":"q1"})
-  r.Publish("chan1", Message{"from":"q2"})
-  q.Publish("chan2", Message{"from":"q1"})
+  q.Publish("chan2", &StructMessage{X:"q1"})
+  r.Publish("chan1", &StructMessage{X:"q2"})
+  r.Publish("chan1", &StructMessage{X:"q2"})
+  q.Publish("chan2", &StructMessage{X:"q1"})
+  r.Publish("chan1", &StructMessage{X:"q2"})
+  q.Publish("chan2", &StructMessage{X:"q1"})
 
   if err := w.WaitTimeout(50 * time.Millisecond); err != nil {
     t.Error(err)
@@ -144,20 +145,24 @@ func TestThreeWay(t *testing.T) {
   defer end(t, q, r, s)
   w := waiter.New(9)
   listen := func(q *MessageQueue) {
-    if c, err := q.Subscribe("chan"); err != nil {
+    if c, err := q.Subscribe("chan", ArbMessage{}); err != nil {
       t.Error(err)
       w.Errors <- err
     } else {
       go func () {
         froms := make(map[string]bool)
-        for m := range c {
-          if s, ok := m["from"].(string); ok {
-            if _, ok := froms[s]; ok {
-              t.Error("Got the same from twice!", froms[s], s)
-            }
-            froms[s] = true
+        for msg := range c {
+          if m, ok := msg.(ArbMessage); !ok {
+            t.Error("msg is not an ArbMessage?")
           } else {
-            t.Error("Couldn't cast from to string", m)
+            if s, ok := m["from"].(string); ok {
+              if _, ok := froms[s]; ok {
+                t.Error("Got the same from twice!", froms[s], s)
+              }
+              froms[s] = true
+            } else {
+              t.Error("Couldn't cast from to string", m)
+            }
           }
           w.Done <- true
         }
@@ -169,15 +174,15 @@ func TestThreeWay(t *testing.T) {
   listen(r)
   listen(s)
 
-  if err := q.Publish("chan", Message{"from":"q1"}); err != nil {
+  if err := q.Publish("chan", ArbMessage{"from":"q1"}); err != nil {
     t.Error(err)
   }
 
-  if err := r.Publish("chan", Message{"from":"q2"}); err != nil {
+  if err := r.Publish("chan", ArbMessage{"from":"q2"}); err != nil {
     t.Error(err)
   }
 
-  if err := s.Publish("chan", Message{"from":"q3"}); err != nil {
+  if err := s.Publish("chan", ArbMessage{"from":"q3"}); err != nil {
     t.Error(err)
   }
 
@@ -187,6 +192,26 @@ func TestThreeWay(t *testing.T) {
 }
 
 // -- helpers --
+
+type ArbMessage map[string]interface{}
+func (msg ArbMessage) Id() []byte {
+  if id, ok := msg["id"]; ok {
+    return []byte(id.(string))
+  }
+  msg["id"] = uuid.NewRandom().String()
+  return []byte(msg["id"].(string))
+}
+
+type StructMessage struct {
+  X string
+  Uid string
+}
+func (msg *StructMessage) Id() []byte {
+  if msg.Uid == "" {
+    msg.Uid = uuid.NewRandom().String()
+  }
+  return []byte(msg.Uid)
+}
 
 func config() *Config {
 	return &Config{
@@ -234,12 +259,20 @@ func end(t *testing.T, qs ...io.Closer) {
 }
 
 func checkMessageEqual(t *testing.T, el, compare Message) {
-	if id, ok := el["id"]; !ok || id == "" {
-		t.Error("element has no id!", el)
-	} else {
-		compare["id"] = el["id"]
-		if !reflect.DeepEqual(Message(el), compare) {
-			t.Error("List element isn't as it should be:", el, compare)
-		}
+  if arb, ok := el.(ArbMessage); ok {
+    if id, ok := arb["id"]; !ok || id == "" {
+      t.Error("element has no id!", el)
+    }
+    compare.(ArbMessage)["id"] = arb["id"]
+  }
+  if str, ok := el.(*StructMessage); ok {
+    if id := str.Uid; id == "" {
+      t.Error("Element has no id", el)
+    }
+    compare.(*StructMessage).Uid = str.Uid
+  }
+
+	if !reflect.DeepEqual(el, compare) {
+		t.Error("List element isn't as it should be:", el, compare)
 	}
 }

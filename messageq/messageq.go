@@ -34,7 +34,11 @@ type Discovery interface {
 	io.Closer
 }
 
-type Message map[string]interface{}
+// A message in MessageQueue must have the Id() function required by tasks in RelyQueue
+type Message interface {
+	relyq.Ider
+}
+
 type RelyQConfig relyq.Config
 
 type Config struct {
@@ -61,11 +65,11 @@ func New(pool *redis.Pool, disco Discovery, cfg *Config) *MessageQueue {
 }
 
 // Subscribe on a channel. Returns the channel of messages
-func (mq *MessageQueue) Subscribe(channel string) (chan Message, error) {
+func (mq *MessageQueue) Subscribe(channel string, example Message) (chan Message, error) {
 	name, q := mq.endpoint(channel)
 	err := mq.discovery.Register(channel, name)
 
-	return q.Messages(mq.Errors), err
+	return q.Messages(mq.Errors, example), err
 }
 
 // Publish a message on a channel
@@ -138,8 +142,7 @@ func (mq *MessageQueue) getQueue(endpoint string) *queue {
 
 func (mq *MessageQueue) send(endpoint string, message Message) error {
 	q := mq.getQueue(endpoint)
-	t := relyq.Task(message)
-	return q.q.Push(t)
+	return q.q.Push(message)
 }
 
 func (rqc *RelyQConfig) Defaults() {
