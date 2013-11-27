@@ -2,7 +2,6 @@ package messageq
 
 import (
 	"github.com/garyburd/redigo/redis"
-  "github.com/extemporalgenome/uuid"
   "github.com/yanatan16/gowaiter"
 	"testing"
   "time"
@@ -27,18 +26,18 @@ func TestBasic(t *testing.T) {
 	defer end(t, q, r)
 	done := make(chan bool)
 
-	c, err := q.Subscribe("mychan", ArbMessage{})
+	c, err := q.Subscribe("mychan", ArbitraryMessage{})
 	if err != nil {
 		t.Error(err)
 	}
 
 	go func() {
 		msg := <-c
-		checkMessageEqual(t, msg, ArbMessage{"hello": "world"})
+		checkMessageEqual(t, msg, ArbitraryMessage{"hello": "world"})
 		done <- true
 	}()
 
-	r.Publish("mychan", ArbMessage{"hello": "world"})
+	r.Publish("mychan", ArbitraryMessage{"hello": "world"})
 
 	select {
 	case <-done:
@@ -54,12 +53,12 @@ func TestBasic(t *testing.T) {
 func TestClose(t *testing.T) {
   q, r := begin(t, config)
 
-  c, err := q.Subscribe("achan", ArbMessage{})
+  c, err := q.Subscribe("achan", ArbitraryMessage{})
   if err != nil {
     t.Error(err)
   }
 
-  if err := r.Publish("achan", ArbMessage{"before":"close"}); err != nil {
+  if err := r.Publish("achan", ArbitraryMessage{"before":"close"}); err != nil {
     t.Error(err)
   }
 
@@ -71,7 +70,7 @@ func TestClose(t *testing.T) {
     if !ok {
       t.Error("Got close before message on c")
     }
-    checkMessageEqual(t, msg, ArbMessage{"before":"close"})
+    checkMessageEqual(t, msg, ArbitraryMessage{"before":"close"})
   case <- time.After(50 * time.Millisecond):
     t.Error("Timeout waiting for c message")
   }
@@ -145,15 +144,15 @@ func TestThreeWay(t *testing.T) {
   defer end(t, q, r, s)
   w := waiter.New(9)
   listen := func(q *MessageQueue) {
-    if c, err := q.Subscribe("chan", ArbMessage{}); err != nil {
+    if c, err := q.Subscribe("chan", ArbitraryMessage{}); err != nil {
       t.Error(err)
       w.Errors <- err
     } else {
       go func () {
         froms := make(map[string]bool)
         for msg := range c {
-          if m, ok := msg.(ArbMessage); !ok {
-            t.Error("msg is not an ArbMessage?")
+          if m, ok := msg.(ArbitraryMessage); !ok {
+            t.Error("msg is not an ArbitraryMessage?")
           } else {
             if s, ok := m["from"].(string); ok {
               if _, ok := froms[s]; ok {
@@ -174,15 +173,15 @@ func TestThreeWay(t *testing.T) {
   listen(r)
   listen(s)
 
-  if err := q.Publish("chan", ArbMessage{"from":"q1"}); err != nil {
+  if err := q.Publish("chan", ArbitraryMessage{"from":"q1"}); err != nil {
     t.Error(err)
   }
 
-  if err := r.Publish("chan", ArbMessage{"from":"q2"}); err != nil {
+  if err := r.Publish("chan", ArbitraryMessage{"from":"q2"}); err != nil {
     t.Error(err)
   }
 
-  if err := s.Publish("chan", ArbMessage{"from":"q3"}); err != nil {
+  if err := s.Publish("chan", ArbitraryMessage{"from":"q3"}); err != nil {
     t.Error(err)
   }
 
@@ -193,24 +192,9 @@ func TestThreeWay(t *testing.T) {
 
 // -- helpers --
 
-type ArbMessage map[string]interface{}
-func (msg ArbMessage) Id() []byte {
-  if id, ok := msg["id"]; ok {
-    return []byte(id.(string))
-  }
-  msg["id"] = uuid.NewRandom().String()
-  return []byte(msg["id"].(string))
-}
-
 type StructMessage struct {
+  *StructuredMessage
   X string
-  Uid string
-}
-func (msg *StructMessage) Id() []byte {
-  if msg.Uid == "" {
-    msg.Uid = uuid.NewRandom().String()
-  }
-  return []byte(msg.Uid)
 }
 
 func config() *Config {
@@ -259,17 +243,17 @@ func end(t *testing.T, qs ...io.Closer) {
 }
 
 func checkMessageEqual(t *testing.T, el, compare Message) {
-  if arb, ok := el.(ArbMessage); ok {
+  if arb, ok := el.(ArbitraryMessage); ok {
     if id, ok := arb["id"]; !ok || id == "" {
       t.Error("element has no id!", el)
     }
-    compare.(ArbMessage)["id"] = arb["id"]
+    compare.(ArbitraryMessage)["id"] = arb["id"]
   }
   if str, ok := el.(*StructMessage); ok {
-    if id := str.Uid; id == "" {
+    if id := str.MqId; id == "" {
       t.Error("Element has no id", el)
     }
-    compare.(*StructMessage).Uid = str.Uid
+    compare.(*StructMessage).MqId = str.MqId
   }
 
 	if !reflect.DeepEqual(el, compare) {
