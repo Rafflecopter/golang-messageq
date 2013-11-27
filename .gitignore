@@ -24,3 +24,5 @@ _testmain.go
 # Application specific
 config.json
 socialite
+example/publisher/publisher
+example/subscriber/subscriber

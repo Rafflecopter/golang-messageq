@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/Rafflecopter/golang-messageq/messageq"
+  "github.com/Rafflecopter/golang-messageq/example"
 	"github.com/garyburd/redigo/redis"
 	"log"
 	"time"
@@ -13,7 +14,8 @@ import (
 func DoSubscriber(mq *messageq.MessageQueue) {
 	log.Println("Subscribing to the tick channel")
 
-	c, err := mq.Subscribe("tick")
+  var exmsg *example.ExampleMessage
+	c, err := mq.Subscribe("tick", exmsg)
 	if err != nil {
 		log.Panicln("Error subscribing", err)
 	}
@@ -30,13 +32,10 @@ func DoSubscriber(mq *messageq.MessageQueue) {
 	}()
 
 	for msg := range c {
-		rectime := time.Now()
-		if itick, ok := msg["time"]; ok {
-			if tick, ok := itick.(float64); ok {
-				senttime := time.Unix(0, int64(tick))
-				log.Println("Received message sent at", senttime, "received at", rectime, "diff:", rectime.Sub(senttime))
-			}
-		}
+    exmsg := msg.(*example.ExampleMessage)
+    exmsg.Received = time.Now().UnixNano()
+
+    log.Println("Received message:", exmsg)
 	}
 }
 

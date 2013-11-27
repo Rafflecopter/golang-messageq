@@ -45,14 +45,26 @@ func CreateMessageQ(pool *redis.Pool) *messageq.MessageQueue {
 
 ## Use
 
+Create your data types:
+
+```go
+type MyMessage struct {
+  messageq.StructuredMessage
+
+  OtherFields string
+}
+```
+
 ```go
 q := CreateMessageQ(redisPool)
 
-if messageChannel, err := q.Subscribe("some-channel"); err != nil {
+var mymsg *MyMessage
+if messageChannel, err := q.Subscribe("some-channel", mymsg); err != nil {
   panic(err)
 } else {
   go func() {
     for message := range messageChannel {
+      mymessage := message.(*MyMessage)
       // Do something with your messages
     }
   }()

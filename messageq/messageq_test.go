@@ -193,7 +193,7 @@ func TestThreeWay(t *testing.T) {
 // -- helpers --
 
 type StructMessage struct {
-  *StructuredMessage
+  StructuredMessage
   X string
 }
 
@@ -250,7 +250,7 @@ func checkMessageEqual(t *testing.T, el, compare Message) {
     compare.(ArbitraryMessage)["id"] = arb["id"]
   }
   if str, ok := el.(*StructMessage); ok {
-    if id := str.MqId; id == "" {
+    if id := str.MqId; id == nil {
       t.Error("Element has no id", el)
     }
     compare.(*StructMessage).MqId = str.MqId

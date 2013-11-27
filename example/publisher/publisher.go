@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/Rafflecopter/golang-messageq/messageq"
+	"github.com/Rafflecopter/golang-messageq/example"
 	"github.com/garyburd/redigo/redis"
 	"log"
 	"time"
@@ -12,7 +13,7 @@ func DoPublisher(mq *messageq.MessageQueue) {
 	log.Println("Publishing a tick message every", dur)
 
 	for _ = range time.Tick(dur) {
-		if err := mq.Publish("tick", messageq.Message{"time": time.Now().UnixNano()}); err != nil {
+		if err := mq.Publish("tick", &example.ExampleMessage{Name: "tick", Sent: time.Now().UnixNano()}); err != nil {
 			log.Println("Error publishing tick:", err)
 		} else {
 			log.Println("Published tick successfully at", time.Now())
@@ -31,6 +32,7 @@ func CreateMessageQ(pool *redis.Pool) *messageq.MessageQueue {
 		RelyQConfig: &messageq.RelyQConfig{
 			Prefix:        "subscriber-messageq", // Required
 		},
+		SubscriberListDecay: time.Second, // This is low because of the example app
 	}
 
 	// This must be the same on all nodes of a pub/sub network!
