@@ -146,7 +146,9 @@ func (mq *MessageQueue) send(endpoint string, message Message) error {
 
 func (rqc *RelyQConfig) Defaults() {
 	cfg := new(relyq.Config)
-	*cfg = relyq.Config(*rqc)
+	if rqc != nil {
+		*cfg = relyq.Config(*rqc)
+	}
 	cfg.Defaults()
 	*rqc = RelyQConfig(*cfg)
 }
