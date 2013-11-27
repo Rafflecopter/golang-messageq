@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/Rafflecopter/golang-messageq/messageq"
 	"github.com/Rafflecopter/golang-messageq/example"
+	"github.com/Rafflecopter/golang-messageq/messageq"
 	"github.com/garyburd/redigo/redis"
 	"log"
 	"time"
@@ -30,7 +30,7 @@ func main() {
 func CreateMessageQ(pool *redis.Pool) *messageq.MessageQueue {
 	cfg := &messageq.Config{
 		RelyQConfig: &messageq.RelyQConfig{
-			Prefix:        "subscriber-messageq", // Required
+			Prefix: "subscriber-messageq", // Required
 		},
 		SubscriberListDecay: time.Second, // This is low because of the example app
 	}

@@ -13,7 +13,7 @@ import (
 
 // A message queue object.
 type MessageQueue struct {
-  Errors chan error
+	Errors      chan error
 	pool        *redis.Pool
 	cfg         *Config
 	prefix      string
@@ -53,7 +53,7 @@ type Config struct {
 func New(pool *redis.Pool, disco Discovery, cfg *Config) *MessageQueue {
 	cfg.Defaults()
 	mq := &MessageQueue{
-    Errors: make(chan error),
+		Errors:      make(chan error),
 		pool:        pool,
 		cfg:         cfg,
 		queues:      make(map[string]*queue),
@@ -81,10 +81,9 @@ func (mq *MessageQueue) Publish(channel string, message Message) error {
 
 	for _, endp := range list {
 		if err2 := mq.send(endp, message); err != nil {
-      err = err2
-    }
+			err = err2
+		}
 	}
-
 
 	return err
 }
@@ -116,8 +115,8 @@ func (mq *MessageQueue) Close() error {
 		w.Close(q)
 	}
 	err := w.Wait()
-  close(mq.Errors)
-  return err
+	close(mq.Errors)
+	return err
 }
 
 // -- helpers --
