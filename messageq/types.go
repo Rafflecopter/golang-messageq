@@ -1,7 +1,7 @@
 package messageq
 
 import (
-	"github.com/extemporalgenome/uuid"
+	"github.com/satori/go.uuid"
 )
 
 // An arbitrary message object that can be directly used by applications
@@ -11,7 +11,7 @@ func (t ArbitraryMessage) Id() []byte {
 	if id, ok := t["id"]; ok {
 		return []byte(id.(string))
 	}
-	id := uuid.NewRandom().String()
+	id := uuid.NewV4().String()
 	t["id"] = id
 	return []byte(id)
 }
@@ -33,7 +33,7 @@ func (t *StructuredMessage) Id() []byte {
 	}
 
 	if t.MqId == nil {
-		t.MqId = uuid.NewRandom().Bytes()
+		t.MqId = uuid.NewV4().Bytes()
 	}
 	return t.MqId
 }
