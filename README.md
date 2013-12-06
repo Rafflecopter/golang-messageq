@@ -4,6 +4,10 @@ A simple pub/sub system that uses reliable task queues for delivery. It uses [re
 
 There are a few redis clients for Go but this package uses [redigo](https://github.com/garyburd/redigo)
 
+Every messaging system has different tradeoffs and this one is no different. Redis lists are not the fastest method of transport, so there will be latency. Also, this system is built to not drop messages on the floor, but the tradeoff is increased latency and possibility of overloading redis itself. Intentionally, it is possible to keep receiving messages in your queue when a subscriber goes offline without unsubscribing. Please be aware of these tradeoffs when choosing a messaging system.
+
+For a less reliable alternatives (but faster and safer for non-long-term use-cases), see [nats](https://github.com/derekcollison/nats), for the all-encompasing messaging system: [rabbitmq](http://www.rabbitmq.com/), and for the do-it-yourselfers: [zeromq](http://www.zeromq.org).
+
 ### Documentation
 
 [Documentation on godoc.org](http://godoc.org/github.com/Rafflecopter/golang-messageq/messageq)
