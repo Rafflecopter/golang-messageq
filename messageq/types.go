@@ -24,7 +24,7 @@ func (t ArbitraryMessage) Id() []byte {
 //      OtherFields string
 //    }
 type StructuredMessage struct {
-	MqId []byte `json:"id"`
+	MqId string `json:"id"`
 }
 
 func (t *StructuredMessage) Id() []byte {
@@ -32,8 +32,8 @@ func (t *StructuredMessage) Id() []byte {
 		t = new(StructuredMessage)
 	}
 
-	if t.MqId == nil {
-		t.MqId = uuid.NewV4().Bytes()
+	if t.MqId == "" {
+		t.MqId = uuid.NewV4().String()
 	}
-	return t.MqId
+	return []byte(t.MqId)
 }
